@@ -1,49 +1,79 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {
-    StyleSheet,
+    StyleSheet, Button,
     Text, Image,
     View, TouchableOpacity,
     ScrollView, FlatList
 } from 'react-native';
+import yelp from '../api/yelp';
 
 class PendingScreen extends React.Component {
-    constructor(){
-        super()
+
+    constructor() {
+        super();
         this.state = {
-            data:[
-                {
-                    title:'Nike Waffle Blue Multi',
-                    subtitle:'US8.5 / $1050',
-                    lowestP:'Current Lowest Price $908'   
-                },
-                {
-                    title:'Nike AJ1 Yellow Black',
-                    subtitle:'US8.5 / $1050',
-                    lowestP:'Current Lowest Price $908'   
-                },
-                
-            ],
-            checked:0
-        }
+            fetching_from_server:false,
+            isListEnd:false,
+            results:[]
+        };
+        this.offset = 1
     }
+
+    componentDidMount() {
+        this.loadMoreData()
+    }
+
+    loadMoreData = () => {
+        if (!this.state.fetching_from_server && !this.state.isListEnd) {
+          //On click of Load More button We will call the web API again
+          this.setState({fetching_from_server:true}, async () => {
+            const response = await yelp.get(`/search`, {
+                params:{
+                    limit: 50,
+                    location:'New York',
+                    offset: this.offset
+                }
+            });
+            if (response.data) {
+                this.offset = this.offset + 50;
+                console.log(this.offset);
+                console.log(response.data.total)    
+                this.setState({
+                    results: [...this.state.results, ...response.data.businesses],
+                    fetching_from_server:false
+    
+                });       
+            }else {
+                this.setState({
+                    fetching_from_server: false,
+                    isListEnd: true,
+                  });
+            }
+            
+      
+          });
+        }
+      };
+
     render(){
         return (
-            
                 <View style = {styles.background}>
                     <FlatList 
-                        data={this.state.data}
-                        keyExtractor={blog => blog.title }
+                        data={this.state.results}
+                        keyExtractor={(blog) => blog.id}
+                        onEndReached={() => this.loadMoreData()}
+                        onEndReachedThreshold={0.5}
                         renderItem={({item})=>{
                             return (                         
                                 <View style = {styles.box}>
                                     <View>
                                         <TouchableOpacity style={styles.btn}>
                                             <View style={styles.btn_content}>
-                                                <Text style={styles.text}>{item.title}</Text>
-                                                <Text style={styles.text_subtext}>{item.subtitle}</Text>
+                                                <Text style={styles.text}>{item.name}</Text>
+                                                <Text style={styles.text_subtext}>{item.location.address1}</Text>
                                             </View>
                                             <View style={styles.btn_content_bottom}>
-                                                <Text style={styles.text_bottom}>{item.lowestP}</Text>
+                                                <Text style={styles.text_bottom}>{item.alias}</Text>
                                                 <Text style={{fontSize:12, color:'#191919'}}>Details</Text>
                                             </View>                        
                                         </TouchableOpacity>  
@@ -53,13 +83,10 @@ class PendingScreen extends React.Component {
                         }}
                     />
                 </View>
-       
- 
-        )
-        
-        
+        )      
     }
 }
+
 
     
 const styles = StyleSheet.create({
